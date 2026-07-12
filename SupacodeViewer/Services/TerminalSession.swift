@@ -3,7 +3,7 @@ import Foundation
 enum TerminalConnectionStatus: Sendable, Equatable {
     case connecting
     case connected
-    case disconnected
+    case disconnected(String)
     case failed(String)
 }
 
@@ -35,7 +35,6 @@ final class TerminalSession {
         receiveTask = nil
         socket?.cancel(with: .goingAway, reason: nil)
         socket = nil
-        connectionStatus = .disconnected
     }
 
     func send(_ data: ArraySlice<UInt8>) {
@@ -88,13 +87,14 @@ final class TerminalSession {
             } catch {
                 guard !Task.isCancelled else { return }
 
+                let reason = error.localizedDescription
                 if !hasRetriedOnce {
                     hasRetriedOnce = true
                     try? await Task.sleep(for: .seconds(1))
                     guard !Task.isCancelled else { return }
                     connect()
                 } else {
-                    connectionStatus = .disconnected
+                    connectionStatus = .disconnected(reason)
                 }
                 return
             }

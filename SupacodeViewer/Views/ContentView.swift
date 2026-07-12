@@ -149,8 +149,8 @@ private struct TerminalContainerView: View {
                 TerminalView(session: session)
                     .ignoresSafeArea(.keyboard)
 
-                if session.connectionStatus == .disconnected {
-                    disconnectedOverlay
+                if case .disconnected(let reason) = session.connectionStatus {
+                    disconnectedOverlay(reason: reason)
                 }
             } else {
                 ProgressView("Connecting…")
@@ -168,7 +168,7 @@ private struct TerminalContainerView: View {
         }
     }
 
-    private var disconnectedOverlay: some View {
+    private func disconnectedOverlay(reason: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "bolt.slash")
                 .font(.largeTitle)
@@ -176,6 +176,17 @@ private struct TerminalContainerView: View {
             Text("Disconnected")
                 .font(.headline)
                 .foregroundStyle(.secondary)
+            Text(reason)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            if let session {
+                Text("Surface: \(session.surfaceID)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .monospaced()
+            }
             Button("Reconnect") {
                 session?.reconnect()
             }

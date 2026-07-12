@@ -14,7 +14,7 @@ enum ConnectionStore {
               let url = URL(string: urlString),
               let token = KeychainHelper.load(forKey: tokenKey)
         else { return nil }
-        return Connection(url: url, token: token)
+        return Connection(url: url, token: token.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     static func clear() {
