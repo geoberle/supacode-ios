@@ -3,50 +3,55 @@ import SwiftUI
 struct WorktreeRowView: View {
     let worktree: SupacodeWorktree
 
-    private var tintColor: Color {
-        Color(supacodeTint: worktree.resolvedTint) ?? .primary
+    private var nameColor: Color {
+        Color(supacodeTint: worktree.customTint) ?? .primary
+    }
+
+    private var iconColor: Color {
+        guard let pullRequest = worktree.pullRequest else { return .secondary }
+        if pullRequest.isDraft { return .gray }
+        switch pullRequest.state {
+        case "OPEN": return .green
+        case "MERGED": return .purple
+        case "CLOSED": return .red
+        default: return .secondary
+        }
     }
 
     var body: some View {
         Label {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(worktree.name)
                         .font(.body)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(tintColor)
-                    Text(worktree.branchName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(nameColor)
                         .lineLimit(1)
+
+                    if hasMetadata {
+                        metadataRow
+                    }
                 }
 
-                if hasMetadata {
-                    metadataRow
+                Spacer()
+
+                if let added = worktree.addedLines, let removed = worktree.removedLines {
+                    DiffStatsView(added: added, removed: removed)
                 }
             }
         } icon: {
             Image(systemName: worktree.isFolder ? "folder" : "arrow.triangle.branch")
-                .foregroundStyle(tintColor)
+                .foregroundStyle(iconColor)
         }
     }
 
     private var hasMetadata: Bool {
-        worktree.pullRequest != nil
-            || !worktree.agents.isEmpty
-            || worktree.addedLines != nil
-            || worktree.removedLines != nil
+        worktree.pullRequest != nil || !worktree.agents.isEmpty
     }
-
-    // MARK: - Metadata Row
 
     private var metadataRow: some View {
         HStack(spacing: 6) {
             if let pullRequest = worktree.pullRequest {
                 PRBadgeView(pullRequest: pullRequest)
-            }
-            if let added = worktree.addedLines, let removed = worktree.removedLines {
-                DiffStatsView(added: added, removed: removed)
             }
             if !worktree.agents.isEmpty {
                 AgentDotsView(agents: worktree.agents)

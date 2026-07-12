@@ -9,6 +9,7 @@ struct SupacodeViewerApp: App {
         WindowGroup {
             ContentView()
                 .environment(connection)
+                .preferredColorScheme(.dark)
                 .task {
                     if let saved = ConnectionStore.load() {
                         connection.connection = saved
