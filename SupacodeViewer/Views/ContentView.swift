@@ -30,9 +30,19 @@ struct ContentView: View {
                 }
             }
         } detail: {
-            if selectedWorktreeID != nil {
-                Text("Terminal placeholder")
-                    .foregroundStyle(.secondary)
+            if let worktree = selectedWorktree,
+               let surfaceID = resolveSurfaceID(worktree),
+               let conn = connection.connection {
+                TerminalContainerView(
+                    connection: conn,
+                    surfaceID: surfaceID
+                )
+            } else if selectedWorktreeID != nil {
+                ContentUnavailableView(
+                    "No Terminal Session",
+                    systemImage: "terminal",
+                    description: Text("This worktree has no active terminal")
+                )
             } else {
                 ContentUnavailableView(
                     "Select a Worktree",
@@ -49,6 +59,20 @@ struct ContentView: View {
                 showConnectionSetup = true
             }
         }
+    }
+
+    // MARK: - Worktree Resolution
+
+    private var selectedWorktree: SupacodeWorktree? {
+        guard let selectedWorktreeID else { return nil }
+        return connection.state?.repositories
+            .flatMap(\.worktrees)
+            .first { $0.id == selectedWorktreeID }
+    }
+
+    private func resolveSurfaceID(_ worktree: SupacodeWorktree) -> String? {
+        guard let tab = worktree.tabs.first else { return nil }
+        return tab.activeSurfaceID ?? tab.surfaceIDs.first
     }
 
     // MARK: - Status Button
@@ -105,5 +129,59 @@ struct ContentView: View {
             case .decodingFailed: "Unexpected response format"
             }
         }
+    }
+}
+
+// MARK: - Terminal Container
+
+private struct TerminalContainerView: View {
+    let connection: Connection
+    let surfaceID: String
+
+    @State private var session: TerminalSession?
+
+    var body: some View {
+        ZStack {
+            Color(red: 0x1E/255, green: 0x1E/255, blue: 0x1E/255)
+                .ignoresSafeArea()
+
+            if let session {
+                TerminalView(session: session)
+                    .ignoresSafeArea(.keyboard)
+
+                if session.connectionStatus == .disconnected {
+                    disconnectedOverlay
+                }
+            } else {
+                ProgressView("Connecting…")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .task(id: surfaceID) {
+            let newSession = TerminalSession(connection: connection, surfaceID: surfaceID)
+            session = newSession
+            newSession.start()
+        }
+        .onDisappear {
+            session?.stop()
+            session = nil
+        }
+    }
+
+    private var disconnectedOverlay: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "bolt.slash")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text("Disconnected")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            Button("Reconnect") {
+                session?.reconnect()
+            }
+            .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.black.opacity(0.6))
     }
 }
