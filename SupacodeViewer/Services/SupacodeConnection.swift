@@ -114,10 +114,11 @@ final class SupacodeConnection {
 
             await fetchState()
 
-            var components = URLComponents(url: connection.url.appending(path: "/api/events"), resolvingAgainstBaseURL: false)
-            components?.queryItems = [URLQueryItem(name: "token", value: connection.token)]
+            guard var components = URLComponents(url: connection.url.appending(path: "/api/events"), resolvingAgainstBaseURL: false) else { return }
+            components.scheme = connection.url.scheme == "https" ? "wss" : "ws"
+            components.queryItems = [URLQueryItem(name: "token", value: connection.token)]
 
-            guard let wsURL = components?.url else { return }
+            guard let wsURL = components.url else { return }
 
             let socket = session.webSocketTask(with: wsURL)
             socket.resume()
