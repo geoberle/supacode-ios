@@ -9,6 +9,11 @@ struct SupacodeViewerApp: App {
         WindowGroup {
             ContentView()
                 .environment(connection)
+                .task {
+                    if let saved = ConnectionStore.load() {
+                        connection.connection = saved
+                    }
+                }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {

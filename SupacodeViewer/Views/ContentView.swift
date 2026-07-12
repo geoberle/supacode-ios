@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @Environment(SupacodeConnection.self) private var connection
     @State private var selectedWorktreeID: String?
+    @State private var showConnectionSetup = false
 
     var body: some View {
         NavigationSplitView {
@@ -11,12 +12,22 @@ struct ContentView: View {
                     repositories: repositories,
                     selectedWorktreeID: $selectedWorktreeID
                 )
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        statusButton
+                    }
+                }
             } else {
                 ContentUnavailableView(
                     statusTitle,
                     systemImage: statusIcon,
                     description: Text(statusDescription)
                 )
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        statusButton
+                    }
+                }
             }
         } detail: {
             if selectedWorktreeID != nil {
@@ -30,7 +41,38 @@ struct ContentView: View {
                 )
             }
         }
+        .sheet(isPresented: $showConnectionSetup) {
+            ConnectionSetupView()
+        }
+        .onAppear {
+            if connection.connection == nil, ConnectionStore.load() == nil {
+                showConnectionSetup = true
+            }
+        }
     }
+
+    // MARK: - Status Button
+
+    private var statusButton: some View {
+        Button {
+            showConnectionSetup = true
+        } label: {
+            Image(systemName: "circle.fill")
+                .font(.system(size: 10))
+                .foregroundStyle(statusColor)
+        }
+    }
+
+    private var statusColor: Color {
+        switch connection.status {
+        case .connected: .green
+        case .connecting: .yellow
+        case .idle: .gray
+        case .error: .red
+        }
+    }
+
+    // MARK: - Empty State
 
     private var statusTitle: String {
         switch connection.status {
