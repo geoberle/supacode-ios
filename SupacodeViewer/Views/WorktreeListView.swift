@@ -33,24 +33,3 @@ private struct RepoHeaderView: View {
             .foregroundStyle(accentColor ?? .secondary)
     }
 }
-
-private struct WorktreeRowView: View {
-    let worktree: SupacodeWorktree
-
-    var body: some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(worktree.name)
-                    .font(.body)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color(supacodeTint: worktree.resolvedTint) ?? .primary)
-                Text(worktree.branchName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } icon: {
-            Image(systemName: worktree.isFolder ? "folder" : "arrow.triangle.branch")
-                .foregroundStyle(Color(supacodeTint: worktree.resolvedTint) ?? .secondary)
-        }
-    }
-}
