@@ -17,11 +17,17 @@ enum ConnectionError: Sendable, Equatable {
 @Observable
 @MainActor
 final class SupacodeConnection {
-    var connection: Connection?
+    var connection: Connection? {
+        didSet { connectionDidChange() }
+    }
     var status: ConnectionStatus = .idle
     var state: SupacodeState?
 
     private let session = URLSession.shared
+    private var eventTask: Task<Void, Never>?
+    private var debounceTask: Task<Void, Never>?
+
+    // MARK: - REST
 
     func fetchState() async {
         guard let connection else {
@@ -69,6 +75,81 @@ final class SupacodeConnection {
             status = .connected
         } catch {
             status = .error(.decodingFailed)
+        }
+    }
+
+    // MARK: - Event WebSocket
+
+    func connect() {
+        eventTask?.cancel()
+        eventTask = Task { await eventLoop() }
+    }
+
+    func disconnect() {
+        eventTask?.cancel()
+        eventTask = nil
+        debounceTask?.cancel()
+        debounceTask = nil
+    }
+
+    func handleSceneActive() {
+        Task { await fetchState() }
+    }
+
+    private func connectionDidChange() {
+        disconnect()
+        state = nil
+        if connection != nil {
+            connect()
+        } else {
+            status = .idle
+        }
+    }
+
+    private func eventLoop() async {
+        var backoff: UInt64 = 1
+
+        while !Task.isCancelled {
+            guard let connection else { return }
+
+            await fetchState()
+
+            var components = URLComponents(url: connection.url.appending(path: "/api/events"), resolvingAgainstBaseURL: false)
+            components?.queryItems = [URLQueryItem(name: "token", value: connection.token)]
+
+            guard let wsURL = components?.url else { return }
+
+            let socket = session.webSocketTask(with: wsURL)
+            socket.resume()
+
+            backoff = 1
+
+            while !Task.isCancelled {
+                do {
+                    let message = try await socket.receive()
+                    if case .string("changed") = message {
+                        scheduleDebouncedFetch()
+                    }
+                } catch {
+                    break
+                }
+            }
+
+            socket.cancel(with: .goingAway, reason: nil)
+
+            guard !Task.isCancelled else { return }
+
+            try? await Task.sleep(for: .seconds(backoff))
+            backoff = min(backoff * 2, 10)
+        }
+    }
+
+    private func scheduleDebouncedFetch() {
+        debounceTask?.cancel()
+        debounceTask = Task {
+            try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
+            await fetchState()
         }
     }
 }
