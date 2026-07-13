@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 struct ContentView: View {
@@ -33,7 +34,11 @@ struct ContentView: View {
         } detail: {
             if let worktree = selectedWorktree,
                let surfaces = resolveSurfaces(worktree) {
-                TerminalContainerView(surfaces: surfaces, sessionPool: sessionPool)
+                TerminalContainerView(
+                    worktreeName: worktree.name,
+                    surfaces: surfaces,
+                    sessionPool: sessionPool
+                )
             } else if selectedWorktreeID != nil {
                 ContentUnavailableView(
                     "No Terminal Session",
@@ -132,10 +137,12 @@ struct ContentView: View {
 // MARK: - Terminal Container
 
 private struct TerminalContainerView: View {
+    let worktreeName: String
     let surfaces: [SupacodeSurface]
     let sessionPool: TerminalSessionPool
 
     @State private var selectedSurfaceID: String?
+    @State private var keyboardHeight: CGFloat = 0
 
     private var activeSurfaceID: String {
         selectedSurfaceID
@@ -145,25 +152,48 @@ private struct TerminalContainerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if surfaces.count > 1 {
-                SurfacePickerView(
-                    surfaces: surfaces,
-                    selectedID: activeSurfaceID,
-                    onSelect: { selectedSurfaceID = $0 }
-                )
-            }
-
             ZStack {
                 Color(red: 0x1E/255, green: 0x1E/255, blue: 0x1E/255)
                     .ignoresSafeArea()
 
-                if let session = sessionPool.session(for: activeSurfaceID) {
-                    TerminalView(session: session)
+                if let entry = sessionPool.entry(for: activeSurfaceID) {
+                    TerminalView(poolEntry: entry)
 
-                    if case .disconnected(let reason) = session.connectionStatus {
-                        disconnectedOverlay(reason: reason, surfaceID: session.surfaceID) {
-                            session.reconnect()
+                    if case .disconnected(let reason) = entry.session.connectionStatus {
+                        disconnectedOverlay(reason: reason, surfaceID: entry.session.surfaceID) {
+                            entry.session.reconnect()
                         }
+                    }
+                }
+            }
+        }
+        .padding(.bottom, keyboardHeight)
+        .ignoresSafeArea(.keyboard)
+        .onReceive(
+            NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
+        ) { notification in
+            guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+                  let window = UIApplication.shared.connectedScenes
+                      .compactMap({ $0 as? UIWindowScene })
+                      .flatMap(\.windows)
+                      .first(where: \.isKeyWindow)
+            else { return }
+            keyboardHeight = max(0, window.frame.height - frame.origin.y - window.safeAreaInsets.bottom)
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: 8) {
+                    Text(worktreeName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    if surfaces.count > 1 {
+                        SurfacePickerView(
+                            surfaces: surfaces,
+                            selectedID: activeSurfaceID,
+                            onSelect: { selectedSurfaceID = $0 }
+                        )
+                        .fixedSize()
                     }
                 }
             }
@@ -204,7 +234,7 @@ private struct SurfacePickerView: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            ForEach(Array(surfaces.enumerated()), id: \.element.id) { index, surface in
+            ForEach(Array(zip(surfaces.indices, surfaces)), id: \.1.id) { index, surface in
                 Button {
                     onSelect(surface.id)
                 } label: {
@@ -231,11 +261,7 @@ private struct SurfacePickerView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(surface.id == selectedID ? .primary : .secondary)
             }
-            Spacer()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
-        .background(Color(red: 0x16/255, green: 0x16/255, blue: 0x16/255))
     }
 
     private func agentIconName(_ agent: String) -> String {
