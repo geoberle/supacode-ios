@@ -12,6 +12,7 @@ enum TerminalConnectionStatus: Sendable, Equatable {
 final class TerminalSession {
     let surfaceID: String
     var connectionStatus: TerminalConnectionStatus = .connecting
+    private(set) var hasReceivedData = false
 
     var onOutput: (([UInt8]) -> Void)?
     private(set) var pendingCols: Int = 0
@@ -73,6 +74,7 @@ final class TerminalSession {
     private func connect() {
         stop()
         connectionStatus = .connecting
+        hasReceivedData = false
         hasSentInitialResize = false
         hasRetriedOnce = false
 
@@ -126,6 +128,7 @@ final class TerminalSession {
                     sendResizeNow()
                 }
                 if case .data(let data) = message {
+                    if !hasReceivedData { hasReceivedData = true }
                     bufferOutput([UInt8](data))
                 }
             } catch {
