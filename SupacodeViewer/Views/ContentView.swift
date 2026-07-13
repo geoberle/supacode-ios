@@ -168,6 +168,8 @@ private struct TerminalContainerView: View {
                         disconnectedOverlay(reason: reason, surfaceID: entry.session.surfaceID) {
                             entry.session.reconnect()
                         }
+                    } else if !entry.session.hasReceivedData {
+                        waitingOverlay(surfaceID: entry.session.surfaceID)
                     }
                 }
             }
@@ -203,6 +205,22 @@ private struct TerminalContainerView: View {
                 }
             }
         }
+    }
+
+    private func waitingOverlay(surfaceID: String) -> some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .tint(.secondary)
+            Text("Waiting for terminal…")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            Text("Surface: \(surfaceID)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .monospaced()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.black.opacity(0.6))
     }
 
     private func disconnectedOverlay(reason: String, surfaceID: String, onReconnect: @escaping () -> Void) -> some View {
