@@ -33,11 +33,11 @@ struct ContentView: View {
             }
         } detail: {
             if let (repository, worktree) = selectedRepositoryAndWorktree,
-               let surfaces = resolveSurfaces(worktree) {
+               !worktree.tabs.isEmpty {
                 TerminalContainerView(
                     repositoryName: repository.name,
                     worktreeName: worktree.name,
-                    surfaces: surfaces,
+                    tabs: worktree.tabs,
                     sessionPool: sessionPool
                 )
             } else if selectedWorktreeID != nil {
@@ -74,11 +74,6 @@ struct ContentView: View {
             }
         }
         return nil
-    }
-
-    private func resolveSurfaces(_ worktree: SupacodeWorktree) -> [SupacodeSurface]? {
-        guard let tab = worktree.tabs.first, !tab.surfaces.isEmpty else { return nil }
-        return tab.surfaces
     }
 
     // MARK: - Status Button
@@ -143,25 +138,48 @@ struct ContentView: View {
 private struct TerminalContainerView: View {
     let repositoryName: String
     let worktreeName: String
-    let surfaces: [SupacodeSurface]
+    let tabs: [SupacodeTab]
     let sessionPool: TerminalSessionPool
 
+    @State private var selectedTabID: String?
     @State private var selectedSurfaceID: String?
     @State private var keyboardHeight: CGFloat = 0
 
-    private var activeSurfaceID: String {
-        selectedSurfaceID
-            ?? surfaces.first(where: \.isFocused)?.id
-            ?? surfaces[0].id
+    private var activeTab: SupacodeTab {
+        tabs.first { $0.id == selectedTabID } ?? tabs[0]
+    }
+
+    private var surfaces: [SupacodeSurface] {
+        activeTab.surfaces
+    }
+
+    private var activeSurfaceID: String? {
+        guard !surfaces.isEmpty else { return nil }
+        if let selectedSurfaceID, surfaces.contains(where: { $0.id == selectedSurfaceID }) {
+            return selectedSurfaceID
+        }
+        return surfaces.first(where: \.isFocused)?.id ?? surfaces[0].id
     }
 
     var body: some View {
         VStack(spacing: 0) {
+            if tabs.count > 1 {
+                TabSwitcherView(
+                    worktreeName: worktreeName,
+                    tabs: tabs,
+                    selectedTabID: activeTab.id,
+                    onSelect: { tabID in
+                        selectedTabID = tabID
+                        selectedSurfaceID = nil
+                    }
+                )
+            }
+
             ZStack {
                 Color(red: 0x1E/255, green: 0x1E/255, blue: 0x1E/255)
                     .ignoresSafeArea()
 
-                if let entry = sessionPool.entry(for: activeSurfaceID) {
+                if let activeSurfaceID, let entry = sessionPool.entry(for: activeSurfaceID) {
                     TerminalView(poolEntry: entry)
 
                     if case .disconnected(let reason) = entry.session.connectionStatus {
@@ -197,7 +215,7 @@ private struct TerminalContainerView: View {
                     if surfaces.count > 1 {
                         SurfacePickerView(
                             surfaces: surfaces,
-                            selectedID: activeSurfaceID,
+                            selectedID: activeSurfaceID ?? "",
                             onSelect: { selectedSurfaceID = $0 }
                         )
                         .fixedSize()
