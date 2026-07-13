@@ -61,7 +61,7 @@ final class TerminalSessionPool {
         _ = swizzleKeyboardDismiss
         let view = SwiftTerm.TerminalView()
         let fontSize: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 14 : 11
-        let font = UIFont(name: "SFMono-Regular", size: fontSize)
+        let font = UIFont(name: "MesloLGS-NF-Regular", size: fontSize)
             ?? UIFont(name: "Menlo", size: fontSize)
             ?? UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         view.font = font
