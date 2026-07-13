@@ -111,13 +111,15 @@ struct PRDetailHeaderView: View {
                     checkList(rollup: rollup)
                 }
 
-                Link(destination: URL(string: pullRequest.url)!) {
+                if let prURL = URL(string: pullRequest.url) {
+                Link(destination: prURL) {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up.right.square")
                         Text("Open Pull Request")
                     }
                     .font(.caption)
                     .foregroundStyle(.blue)
+                }
                 }
             }
             .padding(.horizontal, 12)
@@ -126,10 +128,10 @@ struct PRDetailHeaderView: View {
     }
 
     private func checkList(rollup: SupacodeStatusCheckRollup) -> some View {
-        let sorted = rollup.contexts.sorted { a, b in
-            let order = checkSortOrder(a) - checkSortOrder(b)
+        let sorted = rollup.contexts.sorted { lhs, rhs in
+            let order = checkSortOrder(lhs) - checkSortOrder(rhs)
             if order != 0 { return order < 0 }
-            return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
         }
 
         let failed = sorted.filter { $0.conclusion == "FAILURE" }.count
