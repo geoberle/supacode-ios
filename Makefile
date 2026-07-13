@@ -4,7 +4,7 @@ IPHONE = iPhone 17 Pro
 DERIVED_DATA = .build/derived-data
 APP_PATH = $(DERIVED_DATA)/Build/Products/Debug-iphonesimulator/SupacodeViewer.app
 BUNDLE_ID = app.supabit.supacode.viewer
-DEVICE_ID := $(shell xcrun devicectl list devices 2>/dev/null | awk 'NR>2 && !/disconnected/' | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' | tail -1)
+DEVICE_ID := $(shell ./scripts/pick-device.sh)
 
 .PHONY: tools generate build build-iphone build-device test lint run run-iphone run-device screenshot open clean
 
