@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(SupacodeConnection.self) private var connection
+    @Environment(TerminalSessionPool.self) private var sessionPool
     @State private var selectedWorktreeID: String?
     @State private var showConnectionSetup = false
 
@@ -32,11 +33,8 @@ struct ContentView: View {
         } detail: {
             if let worktree = selectedWorktree,
                let surfaceID = resolveSurfaceID(worktree),
-               let conn = connection.connection {
-                TerminalContainerView(
-                    connection: conn,
-                    surfaceID: surfaceID
-                )
+               let session = sessionPool.session(for: surfaceID) {
+                TerminalContainerView(session: session)
             } else if selectedWorktreeID != nil {
                 ContentUnavailableView(
                     "No Terminal Session",
@@ -135,36 +133,19 @@ struct ContentView: View {
 // MARK: - Terminal Container
 
 private struct TerminalContainerView: View {
-    let connection: Connection
-    let surfaceID: String
-
-    @State private var session: TerminalSession?
+    let session: TerminalSession
 
     var body: some View {
         ZStack {
             Color(red: 0x1E/255, green: 0x1E/255, blue: 0x1E/255)
                 .ignoresSafeArea()
 
-            if let session {
-                TerminalView(session: session)
-                    .ignoresSafeArea(.keyboard)
+            TerminalView(session: session)
+                .ignoresSafeArea(.keyboard)
 
-                if case .disconnected(let reason) = session.connectionStatus {
-                    disconnectedOverlay(reason: reason)
-                }
-            } else {
-                ProgressView("Connecting…")
-                    .foregroundStyle(.secondary)
+            if case .disconnected(let reason) = session.connectionStatus {
+                disconnectedOverlay(reason: reason)
             }
-        }
-        .task(id: surfaceID) {
-            let newSession = TerminalSession(connection: connection, surfaceID: surfaceID)
-            session = newSession
-            newSession.start()
-        }
-        .onDisappear {
-            session?.stop()
-            session = nil
         }
     }
 
@@ -181,14 +162,12 @@ private struct TerminalContainerView: View {
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-            if let session {
-                Text("Surface: \(session.surfaceID)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .monospaced()
-            }
+            Text("Surface: \(session.surfaceID)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .monospaced()
             Button("Reconnect") {
-                session?.reconnect()
+                session.reconnect()
             }
             .buttonStyle(.bordered)
         }
