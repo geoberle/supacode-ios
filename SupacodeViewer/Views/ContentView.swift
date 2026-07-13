@@ -141,7 +141,6 @@ private struct TerminalContainerView: View {
                 .ignoresSafeArea()
 
             TerminalView(session: session)
-                .ignoresSafeArea(.keyboard)
 
             if case .disconnected(let reason) = session.connectionStatus {
                 disconnectedOverlay(reason: reason)
