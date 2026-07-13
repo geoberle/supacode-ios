@@ -19,6 +19,7 @@ struct WorktreeListView: View {
         }
         .listStyle(.sidebar)
         .navigationTitle("Supacode")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

@@ -32,9 +32,8 @@ struct ContentView: View {
             }
         } detail: {
             if let worktree = selectedWorktree,
-               let surfaceID = resolveSurfaceID(worktree),
-               let session = sessionPool.session(for: surfaceID) {
-                TerminalContainerView(session: session)
+               let surfaces = resolveSurfaces(worktree) {
+                TerminalContainerView(surfaces: surfaces, sessionPool: sessionPool)
             } else if selectedWorktreeID != nil {
                 ContentUnavailableView(
                     "No Terminal Session",
@@ -68,9 +67,9 @@ struct ContentView: View {
             .first { $0.id == selectedWorktreeID }
     }
 
-    private func resolveSurfaceID(_ worktree: SupacodeWorktree) -> String? {
-        guard let tab = worktree.tabs.first else { return nil }
-        return tab.activeSurfaceID ?? tab.surfaceIDs.first
+    private func resolveSurfaces(_ worktree: SupacodeWorktree) -> [SupacodeSurface]? {
+        guard let tab = worktree.tabs.first, !tab.surfaces.isEmpty else { return nil }
+        return tab.surfaces
     }
 
     // MARK: - Status Button
@@ -133,22 +132,45 @@ struct ContentView: View {
 // MARK: - Terminal Container
 
 private struct TerminalContainerView: View {
-    let session: TerminalSession
+    let surfaces: [SupacodeSurface]
+    let sessionPool: TerminalSessionPool
+
+    @State private var selectedSurfaceID: String?
+
+    private var activeSurfaceID: String {
+        selectedSurfaceID
+            ?? surfaces.first(where: \.isFocused)?.id
+            ?? surfaces[0].id
+    }
 
     var body: some View {
-        ZStack {
-            Color(red: 0x1E/255, green: 0x1E/255, blue: 0x1E/255)
-                .ignoresSafeArea()
+        VStack(spacing: 0) {
+            if surfaces.count > 1 {
+                SurfacePickerView(
+                    surfaces: surfaces,
+                    selectedID: activeSurfaceID,
+                    onSelect: { selectedSurfaceID = $0 }
+                )
+            }
 
-            TerminalView(session: session)
+            ZStack {
+                Color(red: 0x1E/255, green: 0x1E/255, blue: 0x1E/255)
+                    .ignoresSafeArea()
 
-            if case .disconnected(let reason) = session.connectionStatus {
-                disconnectedOverlay(reason: reason)
+                if let session = sessionPool.session(for: activeSurfaceID) {
+                    TerminalView(session: session)
+
+                    if case .disconnected(let reason) = session.connectionStatus {
+                        disconnectedOverlay(reason: reason, surfaceID: session.surfaceID) {
+                            session.reconnect()
+                        }
+                    }
+                }
             }
         }
     }
 
-    private func disconnectedOverlay(reason: String) -> some View {
+    private func disconnectedOverlay(reason: String, surfaceID: String, onReconnect: @escaping () -> Void) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "bolt.slash")
                 .font(.largeTitle)
@@ -161,16 +183,65 @@ private struct TerminalContainerView: View {
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-            Text("Surface: \(session.surfaceID)")
+            Text("Surface: \(surfaceID)")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .monospaced()
-            Button("Reconnect") {
-                session.reconnect()
-            }
-            .buttonStyle(.bordered)
+            Button("Reconnect", action: onReconnect)
+                .buttonStyle(.bordered)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.black.opacity(0.6))
+    }
+}
+
+// MARK: - Surface Picker
+
+private struct SurfacePickerView: View {
+    let surfaces: [SupacodeSurface]
+    let selectedID: String
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(Array(surfaces.enumerated()), id: \.element.id) { index, surface in
+                Button {
+                    onSelect(surface.id)
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("\(index + 1)")
+                            .font(.caption)
+                            .fontWeight(surface.id == selectedID ? .bold : .regular)
+                        if surface.agents.contains(where: { $0.activity == "busy" }) {
+                            Circle()
+                                .fill(.yellow)
+                                .frame(width: 6, height: 6)
+                        } else if let firstAgent = surface.agents.first {
+                            Image(agentIconName(firstAgent.agent))
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 12, height: 12)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(surface.id == selectedID ? Color.white.opacity(0.15) : .clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(surface.id == selectedID ? .primary : .secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        .background(Color(red: 0x16/255, green: 0x16/255, blue: 0x16/255))
+    }
+
+    private func agentIconName(_ agent: String) -> String {
+        switch agent {
+        case "claude": return "claude-code-mark"
+        default: return "\(agent)-mark"
+        }
     }
 }
