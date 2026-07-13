@@ -34,8 +34,12 @@ struct SupacodeWorktree: Codable, Sendable {
 struct SupacodeTab: Codable, Sendable {
     let id: String
     let worktreeID: String
-    let surfaceIDs: [String]
-    let activeSurfaceID: String?
+    let surfaces: [SupacodeSurface]
+}
+
+struct SupacodeSurface: Codable, Sendable {
+    let id: String
+    let isFocused: Bool
     let agents: [SupacodeAgentInstance]
 }
 

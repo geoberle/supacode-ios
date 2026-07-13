@@ -14,6 +14,8 @@ final class TerminalSession {
     var connectionStatus: TerminalConnectionStatus = .connecting
 
     var onOutput: (([UInt8]) -> Void)?
+    private(set) var pendingCols: Int = 0
+    private(set) var pendingRows: Int = 0
 
     private let connection: Connection
     private let session = URLSession.shared
@@ -22,6 +24,7 @@ final class TerminalSession {
     private var flushTask: Task<Void, Never>?
     private var outputBuffer: [UInt8] = []
     private var hasRetriedOnce = false
+    private var hasSentInitialResize = false
 
     init(connection: Connection, surfaceID: String) {
         self.connection = connection
@@ -49,8 +52,15 @@ final class TerminalSession {
     }
 
     func sendResize(cols: Int, rows: Int) {
-        guard let socket, cols > 0, rows > 0 else { return }
-        let json = #"{"type":"resize","cols":\#(cols),"rows":\#(rows)}"#
+        guard cols > 0, rows > 0 else { return }
+        pendingCols = cols
+        pendingRows = rows
+        sendResizeNow()
+    }
+
+    private func sendResizeNow() {
+        guard let socket, pendingCols > 0, pendingRows > 0 else { return }
+        let json = #"{"type":"resize","cols":\#(pendingCols),"rows":\#(pendingRows)}"#
         socket.send(.string(json)) { _ in }
     }
 
@@ -64,6 +74,7 @@ final class TerminalSession {
     private func connect() {
         stop()
         connectionStatus = .connecting
+        hasSentInitialResize = false
 
         guard var components = URLComponents(
             url: connection.url.appending(path: "/api/terminal/\(surfaceID)"),
@@ -110,6 +121,10 @@ final class TerminalSession {
         while !Task.isCancelled {
             do {
                 let message = try await socket.receive()
+                if !hasSentInitialResize {
+                    hasSentInitialResize = true
+                    sendResizeNow()
+                }
                 if case .data(let data) = message {
                     bufferOutput([UInt8](data))
                 }
