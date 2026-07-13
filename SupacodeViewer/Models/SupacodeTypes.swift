@@ -65,6 +65,7 @@ struct SupacodeCheckRun: Codable, Sendable {
     let name: String
     let status: String
     let conclusion: String?
+    let detailsUrl: String?
 }
 
 struct SupacodeAgentInstance: Codable, Sendable {

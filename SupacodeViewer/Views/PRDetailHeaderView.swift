@@ -158,8 +158,9 @@ struct PRDetailHeaderView: View {
         }
     }
 
+    @ViewBuilder
     private func checkRow(_ check: SupacodeCheckRun) -> some View {
-        HStack(spacing: 6) {
+        let row = HStack(spacing: 6) {
             Circle()
                 .fill(checkDotColor(check))
                 .frame(width: 8, height: 8)
@@ -171,6 +172,12 @@ struct PRDetailHeaderView: View {
             Text(checkLabel(check))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+        }
+
+        if let urlString = check.detailsUrl, let url = URL(string: urlString) {
+            Link(destination: url) { row }
+        } else {
+            row
         }
     }
 
