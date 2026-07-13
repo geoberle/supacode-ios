@@ -39,8 +39,14 @@ struct WorktreeRowView: View {
                 }
             }
         } icon: {
-            Image(systemName: worktree.isFolder ? "folder" : "arrow.triangle.branch")
-                .foregroundStyle(iconColor)
+            Group {
+                if worktree.isFolder {
+                    Image(systemName: "folder")
+                } else {
+                    Image("git-branch")
+                }
+            }
+            .foregroundStyle(iconColor)
         }
     }
 

@@ -47,7 +47,11 @@ struct TerminalView: UIViewRepresentable {
             }
         }
 
-        func sizeChanged(source: SwiftTerm.TerminalView, newCols: Int, newRows: Int) {}
+        func sizeChanged(source: SwiftTerm.TerminalView, newCols: Int, newRows: Int) {
+            Task { @MainActor in
+                currentSession?.sendResize(cols: newCols, rows: newRows)
+            }
+        }
         func setTerminalTitle(source: SwiftTerm.TerminalView, title: String) {}
         func hostCurrentDirectoryUpdate(source: SwiftTerm.TerminalView, directory: String?) {}
         func scrolled(source: SwiftTerm.TerminalView, position: Double) {}

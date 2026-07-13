@@ -43,6 +43,12 @@ final class TerminalSession {
         socket.send(message) { _ in }
     }
 
+    func sendResize(cols: Int, rows: Int) {
+        guard let socket, cols > 0, rows > 0 else { return }
+        let json = #"{"type":"resize","cols":\#(cols),"rows":\#(rows)}"#
+        socket.send(.string(json)) { _ in }
+    }
+
     func reconnect() {
         hasRetriedOnce = false
         connect()
