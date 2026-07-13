@@ -37,6 +37,7 @@ struct ContentView: View {
                 TerminalContainerView(
                     repositoryName: repository.name,
                     worktreeName: worktree.name,
+                    pullRequest: worktree.pullRequest,
                     tabs: worktree.tabs,
                     sessionPool: sessionPool
                 )
@@ -138,6 +139,7 @@ struct ContentView: View {
 private struct TerminalContainerView: View {
     let repositoryName: String
     let worktreeName: String
+    let pullRequest: SupacodePullRequest?
     let tabs: [SupacodeTab]
     let sessionPool: TerminalSessionPool
 
@@ -163,6 +165,10 @@ private struct TerminalContainerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let pullRequest {
+                PRDetailHeaderView(pullRequest: pullRequest)
+            }
+
             if tabs.count > 1 {
                 TabSwitcherView(
                     worktreeName: worktreeName,
