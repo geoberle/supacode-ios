@@ -24,6 +24,7 @@ struct SupacodeViewerApp: App {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 connection.handleSceneActive()
+                sessionPool.reconnectAll()
             }
         }
     }

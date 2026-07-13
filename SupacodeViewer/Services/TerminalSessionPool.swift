@@ -24,11 +24,9 @@ final class TerminalSessionPool {
 
         if let existing = entries[surfaceID] {
             if case .disconnected = existing.session.connectionStatus {
-                existing.session.stop()
-                entries.removeValue(forKey: surfaceID)
-            } else {
-                return existing
+                existing.session.reconnect()
             }
+            return existing
         }
 
         let session = TerminalSession(connection: connection, surfaceID: surfaceID)
@@ -42,6 +40,14 @@ final class TerminalSessionPool {
         let poolEntry = PoolEntry(session: session, terminalView: terminalView, coordinator: coordinator)
         entries[surfaceID] = poolEntry
         return poolEntry
+    }
+
+    func reconnectAll() {
+        for entry in entries.values {
+            if case .disconnected = entry.session.connectionStatus {
+                entry.session.reconnect()
+            }
+        }
     }
 
     func stopAll() {

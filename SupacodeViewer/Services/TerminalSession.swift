@@ -65,7 +65,6 @@ final class TerminalSession {
     }
 
     func reconnect() {
-        hasRetriedOnce = false
         connect()
     }
 
@@ -75,6 +74,7 @@ final class TerminalSession {
         stop()
         connectionStatus = .connecting
         hasSentInitialResize = false
+        hasRetriedOnce = false
 
         guard var components = URLComponents(
             url: connection.url.appending(path: "/api/terminal/\(surfaceID)"),

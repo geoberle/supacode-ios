@@ -5,6 +5,11 @@ enum ConnectionStatus: Sendable, Equatable {
     case connecting
     case connected
     case error(ConnectionError)
+
+    var isError: Bool {
+        if case .error = self { return true }
+        return false
+    }
 }
 
 enum ConnectionError: Sendable, Equatable {
@@ -35,7 +40,7 @@ final class SupacodeConnection {
             return
         }
 
-        if state == nil {
+        if state == nil, !status.isError {
             status = .connecting
         }
 
