@@ -31,6 +31,8 @@ struct TerminalView: UIViewRepresentable {
     class Coordinator: NSObject, TerminalViewDelegate {
         weak var terminalView: SwiftTerm.TerminalView?
         private var currentSession: TerminalSession?
+        private var lastCols: Int = 0
+        private var lastRows: Int = 0
 
         @MainActor
         func bind(_ session: TerminalSession) {
@@ -38,6 +40,9 @@ struct TerminalView: UIViewRepresentable {
             currentSession = session
             session.onOutput = { [weak self] bytes in
                 self?.terminalView?.feed(byteArray: bytes[...])
+            }
+            if lastCols > 0, lastRows > 0 {
+                session.sendResize(cols: lastCols, rows: lastRows)
             }
         }
 
@@ -48,6 +53,8 @@ struct TerminalView: UIViewRepresentable {
         }
 
         func sizeChanged(source: SwiftTerm.TerminalView, newCols: Int, newRows: Int) {
+            lastCols = newCols
+            lastRows = newRows
             Task { @MainActor in
                 currentSession?.sendResize(cols: newCols, rows: newRows)
             }
