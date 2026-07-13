@@ -19,6 +19,8 @@ final class TerminalSession {
     private let session = URLSession.shared
     private var socket: URLSessionWebSocketTask?
     private var receiveTask: Task<Void, Never>?
+    private var flushTask: Task<Void, Never>?
+    private var outputBuffer: [UInt8] = []
     private var hasRetriedOnce = false
 
     init(connection: Connection, surfaceID: String) {
@@ -33,6 +35,9 @@ final class TerminalSession {
     func stop() {
         receiveTask?.cancel()
         receiveTask = nil
+        flushTask?.cancel()
+        flushTask = nil
+        outputBuffer.removeAll()
         socket?.cancel(with: .goingAway, reason: nil)
         socket = nil
     }
@@ -83,12 +88,30 @@ final class TerminalSession {
         receiveTask = Task { await receiveLoop(newSocket) }
     }
 
+    private func bufferOutput(_ bytes: [UInt8]) {
+        outputBuffer.append(contentsOf: bytes)
+        guard flushTask == nil else { return }
+        flushTask = Task {
+            try? await Task.sleep(for: .milliseconds(16))
+            guard !Task.isCancelled else { return }
+            flushOutput()
+        }
+    }
+
+    private func flushOutput() {
+        flushTask = nil
+        guard !outputBuffer.isEmpty else { return }
+        let bytes = outputBuffer
+        outputBuffer.removeAll(keepingCapacity: true)
+        onOutput?(bytes)
+    }
+
     private func receiveLoop(_ socket: URLSessionWebSocketTask) async {
         while !Task.isCancelled {
             do {
                 let message = try await socket.receive()
                 if case .data(let data) = message {
-                    onOutput?([UInt8](data))
+                    bufferOutput([UInt8](data))
                 }
             } catch {
                 guard !Task.isCancelled else { return }
