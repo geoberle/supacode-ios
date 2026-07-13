@@ -134,6 +134,6 @@ private let swizzleKeyboardDismiss: Void = {
 
 extension TerminalAccessory {
     @objc fileprivate func supacode_dismissKeyboard(_ sender: UIButton) {
-        terminalView?.resignFirstResponder()
+        _ = terminalView?.resignFirstResponder()
     }
 }

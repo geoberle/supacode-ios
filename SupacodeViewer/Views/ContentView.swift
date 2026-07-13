@@ -32,9 +32,10 @@ struct ContentView: View {
                 }
             }
         } detail: {
-            if let worktree = selectedWorktree,
+            if let (repository, worktree) = selectedRepositoryAndWorktree,
                let surfaces = resolveSurfaces(worktree) {
                 TerminalContainerView(
+                    repositoryName: repository.name,
                     worktreeName: worktree.name,
                     surfaces: surfaces,
                     sessionPool: sessionPool
@@ -65,11 +66,14 @@ struct ContentView: View {
 
     // MARK: - Worktree Resolution
 
-    private var selectedWorktree: SupacodeWorktree? {
+    private var selectedRepositoryAndWorktree: (SupacodeRepository, SupacodeWorktree)? {
         guard let selectedWorktreeID else { return nil }
-        return connection.state?.repositories
-            .flatMap(\.worktrees)
-            .first { $0.id == selectedWorktreeID }
+        for repository in connection.state?.repositories ?? [] {
+            if let worktree = repository.worktrees.first(where: { $0.id == selectedWorktreeID }) {
+                return (repository, worktree)
+            }
+        }
+        return nil
     }
 
     private func resolveSurfaces(_ worktree: SupacodeWorktree) -> [SupacodeSurface]? {
@@ -137,6 +141,7 @@ struct ContentView: View {
 // MARK: - Terminal Container
 
 private struct TerminalContainerView: View {
+    let repositoryName: String
     let worktreeName: String
     let surfaces: [SupacodeSurface]
     let sessionPool: TerminalSessionPool
@@ -184,7 +189,7 @@ private struct TerminalContainerView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 8) {
-                    Text(worktreeName)
+                    Text("\(repositoryName) / \(worktreeName)")
                         .font(.headline)
                         .lineLimit(1)
                     if surfaces.count > 1 {
