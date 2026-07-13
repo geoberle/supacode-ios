@@ -57,8 +57,9 @@ struct ConnectionSetupView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
             Button("Connect") {
-                guard let url = URL(string: urlText), !tokenText.isEmpty else { return }
-                connect(with: Connection(url: url, token: tokenText))
+                let trimmedToken = tokenText.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard let url = URL(string: urlText), !trimmedToken.isEmpty else { return }
+                connect(with: Connection(url: url, token: trimmedToken))
             }
             .disabled(urlText.isEmpty || tokenText.isEmpty)
         }
@@ -107,8 +108,8 @@ struct ConnectionSetupView: View {
     // MARK: - Logic
 
     private func handleScannedURL(_ raw: String) {
-        guard let components = URLComponents(string: raw),
-              let token = components.queryItems?.first(where: { $0.name == "token" })?.value
+        guard let components = URLComponents(string: raw.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let token = components.queryItems?.first(where: { $0.name == "token" })?.value?.trimmingCharacters(in: .whitespacesAndNewlines)
         else {
             scanError = "Invalid QR code — expected a Supacode connection URL"
             return
