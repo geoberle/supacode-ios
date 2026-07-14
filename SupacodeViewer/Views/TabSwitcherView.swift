@@ -15,8 +15,9 @@ struct TabSwitcherView: View {
 
             Spacer()
 
-            HStack(spacing: 2) {
-                ForEach(Array(zip(tabs.indices, tabs)), id: \.1.id) { index, tab in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 2) {
+                    ForEach(Array(zip(tabs.indices, tabs)), id: \.1.id) { index, tab in
                     Button {
                         onSelect(tab.id)
                     } label: {
@@ -37,6 +38,7 @@ struct TabSwitcherView: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(tab.id == selectedTabID ? .primary : .secondary)
+                    }
                 }
             }
         }
