@@ -76,17 +76,27 @@ struct PRDetailHeaderView: View {
 
     private func checkSummaryBadge(rollup: SupacodeStatusCheckRollup) -> some View {
         let failed = rollup.contexts.filter { $0.conclusion == "FAILURE" }.count
-        let total = rollup.contexts.count
+        let passed = rollup.contexts.filter { $0.conclusion == "SUCCESS" || $0.conclusion == "NEUTRAL" }.count
+        let pending = rollup.contexts.count - passed - failed
 
-        return HStack(spacing: 3) {
-            Circle()
-                .fill(failed > 0 ? .red : .green)
-                .frame(width: 6, height: 6)
-            Text("\(failed)/\(total)")
-                .font(.caption2)
-                .fontDesign(.monospaced)
-                .foregroundStyle(.secondary)
+        return HStack(spacing: 1) {
+            if pending > 0 {
+                Text("\(pending)")
+                    .foregroundStyle(.yellow)
+                Text("/")
+                    .foregroundStyle(.secondary)
+            }
+            if failed > 0 {
+                Text("\(failed)")
+                    .foregroundStyle(.red)
+                Text("/")
+                    .foregroundStyle(.secondary)
+            }
+            Text("\(passed)")
+                .foregroundStyle(.green)
         }
+        .font(.caption2)
+        .fontDesign(.monospaced)
     }
 
     // MARK: - Expanded Content
@@ -154,7 +164,8 @@ struct PRDetailHeaderView: View {
                     }
                 }
             }
-            .frame(maxHeight: 200)
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(maxHeight: min(CGFloat(sorted.count) * 28, 200))
         }
     }
 
