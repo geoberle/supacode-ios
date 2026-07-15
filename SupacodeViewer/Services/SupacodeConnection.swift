@@ -31,6 +31,7 @@ final class SupacodeConnection {
     private let session = URLSession.shared
     private var eventTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
+    private var pollTask: Task<Void, Never>?
 
     // MARK: - REST
 
@@ -88,6 +89,8 @@ final class SupacodeConnection {
     func connect() {
         eventTask?.cancel()
         eventTask = Task { await eventLoop() }
+        pollTask?.cancel()
+        pollTask = Task { await pollLoop() }
     }
 
     func disconnect() {
@@ -95,6 +98,8 @@ final class SupacodeConnection {
         eventTask = nil
         debounceTask?.cancel()
         debounceTask = nil
+        pollTask?.cancel()
+        pollTask = nil
     }
 
     func handleSceneActive() {
@@ -147,6 +152,14 @@ final class SupacodeConnection {
 
             try? await Task.sleep(for: .seconds(backoff))
             backoff = min(backoff * 2, 10)
+        }
+    }
+
+    private func pollLoop() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(30))
+            guard !Task.isCancelled else { return }
+            await fetchState()
         }
     }
 

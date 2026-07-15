@@ -41,6 +41,25 @@ struct ContentView: View {
                     tabs: worktree.tabs,
                     sessionPool: sessionPool
                 )
+            } else if let (repository, worktree) = selectedRepositoryAndWorktree {
+                VStack(spacing: 0) {
+                    if let pullRequest = worktree.pullRequest {
+                        PRDetailHeaderView(pullRequest: pullRequest)
+                    }
+                    ContentUnavailableView(
+                        "No Terminal Session",
+                        systemImage: "terminal",
+                        description: Text("This worktree has no active terminal")
+                    )
+                }
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Text("\(repository.name) / \(worktree.name)")
+                            .font(.headline)
+                            .lineLimit(1)
+                    }
+                }
             } else if selectedWorktreeID != nil {
                 ContentUnavailableView(
                     "No Terminal Session",
